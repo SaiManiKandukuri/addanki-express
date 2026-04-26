@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import * as db from '@/lib/supabase-db';
 
 export interface Banner {
   id: string;
@@ -69,6 +69,10 @@ export interface Order {
 }
 
 interface AppState {
+  // Hydration
+  isHydrated: boolean;
+  hydrate: () => Promise<void>;
+
   currentRole: UserRole;
   currentUserId: string | null;
   setRole: (role: UserRole, id?: string | null) => void;
@@ -109,115 +113,209 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>()(
-  persist(
-    (set, get) => ({
-      currentRole: null,
-      currentUserId: null,
-      setRole: (role, id = null) => set({ currentRole: role, currentUserId: id }),
-
-      isTelugu: false,
-      toggleLanguage: () => set((state) => ({ isTelugu: !state.isTelugu })),
-
-      customerProfile: {
-         name: 'Sai Mani Kandukuri',
-         phone: '9346701988',
-         email: 'saimani@example.com',
-         deliveryAddress: 'RTC Bus Stand, Addanki'
-      },
-      updateCustomerProfile: (updates) => set((state) => ({ customerProfile: { ...state.customerProfile, ...updates }})),
-
-      agents: [
-        { id: 'a1', name: 'Raju G.', isOnline: true, phone: '9876500001', credentials: 'pass_raju' },
-        { id: 'a2', name: 'Subbu K.', isOnline: true, phone: '9876500002', credentials: 'pass_subbu' },
-        { id: 'a3', name: 'Venkat', isOnline: false, phone: '9876500003', credentials: 'pass_venkat' },
-      ],
-
-      merchants: [
-        { id: 'm1', name: 'Sangam Dairy', rating: 4.8, deliveryTime: '10 mins', isOffline: false, credentials: 'pass_sangam' },
-        { id: 'm2', name: 'Sri Rama Supermarket', rating: 4.5, deliveryTime: '15 mins', isOffline: false, credentials: 'pass_srirama' },
-        { id: 'm3', name: 'Kanna Meat Mart', rating: 4.7, deliveryTime: '20 mins', isOffline: false, credentials: 'pass_kanna' },
-      ],
-      
-      products: [
-        { id: 'p1', merchantId: 'm1', name: 'Fresh Milk (1L)', price: 60, mrp: 75, category: 'Milk', inStock: true, description: 'Daily fresh cow milk.' },
-        { id: 'p4', merchantId: 'm1', name: 'Paneer (200g)', price: 90, mrp: 110, category: 'Milk', inStock: true },
-        { id: 'p2', merchantId: 'm2', name: 'Toor Dal (1kg)', price: 160, mrp: 190, category: 'Kirana', inStock: true },
-        { id: 'p6', merchantId: 'm2', name: 'Lays Magic Masala', price: 20, mrp: 20, category: 'Snacks', inStock: true },
-        { id: 'p8', merchantId: 'm3', name: 'Tender Chicken (1kg)', price: 280, mrp: 320, category: 'Meat', inStock: true },
-      ],
-      
-      banners: [],
-      
-      addBanner: (banner) => set((state) => ({ banners: [...state.banners, banner] })),
-      removeBanner: (id) => set((state) => ({ banners: state.banners.filter(b => b.id !== id) })),
-
-      toggleProductStock: (id) => 
-        set((state) => ({ products: state.products.map(p => p.id === id ? { ...p, inStock: !p.inStock } : p) })),
-      addProduct: (product) => 
-        set((state) => ({ products: [...state.products, product] })),
-      editProduct: (productId, updates) => 
-        set((state) => ({ products: state.products.map(p => p.id === productId ? { ...p, ...updates } : p) })),
-      addMerchant: (merchant) => 
-        set((state) => ({ merchants: [...state.merchants, merchant] })),
-      updateMerchant: (merchantId, updates) => 
-        set((state) => ({ merchants: state.merchants.map(m => m.id === merchantId ? { ...m, ...updates } : m) })),
-      toggleMerchantStatus: (merchantId) => 
-        set((state) => ({ merchants: state.merchants.map(m => m.id === merchantId ? { ...m, isOffline: !m.isOffline } : m) })),
-      updateAgent: (agentId, updates) => 
-        set((state) => ({ agents: state.agents.map(a => a.id === agentId ? { ...a, ...updates } : a) })),
-      toggleAgentStatus: (agentId) => 
-        set((state) => ({ agents: state.agents.map(a => a.id === agentId ? { ...a, isOnline: !a.isOnline } : a) })),
-
-      cart: [],
-      addToCart: (product) => set((state) => {
-        const existing = state.cart.find(item => item.id === product.id);
-        if (existing) {
-          return { cart: state.cart.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item) };
+  (set, get) => ({
+    // ---- Hydration ----
+    isHydrated: false,
+    hydrate: async () => {
+      try {
+        // Test connection first
+        const connected = await db.testConnection();
+        if (!connected) {
+          console.error('🔴 Supabase connection failed — app will run with empty data');
+          set({ isHydrated: true });
+          return;
         }
-        return { cart: [...state.cart, { ...product, quantity: 1 }] };
-      }),
-      removeFromCart: (productId) => set((state) => {
-        const existing = state.cart.find(item => item.id === productId);
-        if (existing && existing.quantity > 1) {
-          return { cart: state.cart.map(item => item.id === productId ? { ...item, quantity: item.quantity - 1 } : item) };
-        }
-        return { cart: state.cart.filter(item => item.id !== productId) };
-      }),
-      clearCart: () => set({ cart: [] }),
 
-      orders: [],
-      placeOrder: (orderData) => set((state) => {
-        const onlineAgents = state.agents.filter(a => a.isOnline);
-        const activeOrders = state.orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'DENIED');
-        const busyAgentIds = activeOrders.map(o => o.agentId).filter(Boolean);
-        
-        const freeAgents = onlineAgents.filter(a => !busyAgentIds.includes(a.id));
-        const sortedFreeAgents = [...freeAgents].sort((a,b) => state.agents.findIndex(ag=>ag.id===a.id) - state.agents.findIndex(ag=>ag.id===b.id));
+        const [merchants, agents, products, orders, banners, profile] = await Promise.all([
+          db.fetchMerchants(),
+          db.fetchAgents(),
+          db.fetchProducts(),
+          db.fetchOrders(),
+          db.fetchBanners(),
+          db.fetchCustomerProfile('c1'),
+        ]);
+        console.log('✅ Hydration complete:', { merchants: merchants.length, agents: agents.length, products: products.length, orders: orders.length, banners: banners.length });
+        set({
+          merchants,
+          agents,
+          products,
+          orders,
+          banners,
+          customerProfile: profile || {
+            name: 'Guest',
+            phone: '',
+            email: '',
+            deliveryAddress: '',
+          },
+          isHydrated: true,
+        });
+      } catch (err) {
+        console.error('🔴 Supabase hydration failed:', err);
+        // Still mark as hydrated so the app renders (with empty data)
+        set({ isHydrated: true });
+      }
+    },
 
-        const assignedAgent = sortedFreeAgents.length > 0 ? sortedFreeAgents[0].id : (onlineAgents.length > 0 ? onlineAgents[0].id : undefined);
+    // ---- Auth / Role ----
+    currentRole: null,
+    currentUserId: null,
+    setRole: (role, id = null) => set({ currentRole: role, currentUserId: id }),
 
-        const newOrder: Order = {
-          ...orderData,
-          id: Math.random().toString(36).substring(7),
-          status: 'PENDING',
-          agentId: assignedAgent,
-          agentStatus: assignedAgent ? 'PENDING' : undefined,
-          agentAssignedAt: assignedAgent ? Date.now() : undefined
-        };
-        return { orders: [...state.orders, newOrder], cart: [] };
-      }),
-      updateOrderStatus: (orderId, newStatus) => set((state) => ({
-        orders: state.orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
-      })),
-      reassignAgent: (orderId, newAgentId) => set((state) => ({
-        orders: state.orders.map(o => o.id === orderId ? { ...o, agentId: newAgentId, agentStatus: 'PENDING', agentAssignedAt: Date.now() } : o)
-      })),
-      acceptAgentOrder: (orderId) => set((state) => ({
-        orders: state.orders.map(o => o.id === orderId ? { ...o, agentStatus: 'ACCEPTED' } : o)
-      })),
+    // ---- Language ----
+    isTelugu: false,
+    toggleLanguage: () => set((state) => ({ isTelugu: !state.isTelugu })),
+
+    // ---- Customer Profile ----
+    customerProfile: {
+       name: 'Guest',
+       phone: '',
+       email: '',
+       deliveryAddress: '',
+    },
+    updateCustomerProfile: (updates) => {
+      const newProfile = { ...get().customerProfile, ...updates };
+      set({ customerProfile: newProfile });
+      db.upsertCustomerProfile('c1', newProfile).catch(console.error);
+    },
+
+    // ---- Merchants ----
+    merchants: [],
+    addMerchant: (merchant) => {
+      set((state) => ({ merchants: [...state.merchants, merchant] }));
+      db.upsertMerchant(merchant).catch(console.error);
+    },
+    updateMerchant: (merchantId, updates) => {
+      set((state) => ({
+        merchants: state.merchants.map(m => m.id === merchantId ? { ...m, ...updates } : m)
+      }));
+      db.updateMerchantFields(merchantId, updates).catch(console.error);
+    },
+    toggleMerchantStatus: (merchantId) => {
+      const merchant = get().merchants.find(m => m.id === merchantId);
+      if (!merchant) return;
+      const newOffline = !merchant.isOffline;
+      set((state) => ({
+        merchants: state.merchants.map(m => m.id === merchantId ? { ...m, isOffline: newOffline } : m)
+      }));
+      db.updateMerchantFields(merchantId, { isOffline: newOffline }).catch(console.error);
+    },
+
+    // ---- Agents ----
+    agents: [],
+    updateAgent: (agentId, updates) => {
+      set((state) => ({
+        agents: state.agents.map(a => a.id === agentId ? { ...a, ...updates } : a)
+      }));
+      db.updateAgentFields(agentId, updates).catch(console.error);
+    },
+    toggleAgentStatus: (agentId) => {
+      const agent = get().agents.find(a => a.id === agentId);
+      if (!agent) return;
+      const newOnline = !agent.isOnline;
+      set((state) => ({
+        agents: state.agents.map(a => a.id === agentId ? { ...a, isOnline: newOnline } : a)
+      }));
+      db.updateAgentFields(agentId, { isOnline: newOnline }).catch(console.error);
+    },
+
+    // ---- Products ----
+    products: [],
+    toggleProductStock: (id) => {
+      const product = get().products.find(p => p.id === id);
+      if (!product) return;
+      const newStock = !product.inStock;
+      set((state) => ({
+        products: state.products.map(p => p.id === id ? { ...p, inStock: newStock } : p)
+      }));
+      db.updateProductFields(id, { inStock: newStock }).catch(console.error);
+    },
+    addProduct: (product) => {
+      set((state) => ({ products: [...state.products, product] }));
+      db.insertProduct(product).catch(console.error);
+    },
+    editProduct: (productId, updates) => {
+      set((state) => ({
+        products: state.products.map(p => p.id === productId ? { ...p, ...updates } : p)
+      }));
+      db.updateProductFields(productId, updates).catch(console.error);
+    },
+
+    // ---- Banners ----
+    banners: [],
+    addBanner: (banner) => {
+      set((state) => ({ banners: [...state.banners, banner] }));
+      db.insertBanner(banner).catch(console.error);
+    },
+    removeBanner: (id) => {
+      set((state) => ({ banners: state.banners.filter(b => b.id !== id) }));
+      db.deleteBanner(id).catch(console.error);
+    },
+
+    // ---- Cart (client-only, no DB) ----
+    cart: [],
+    addToCart: (product) => set((state) => {
+      const existing = state.cart.find(item => item.id === product.id);
+      if (existing) {
+        return { cart: state.cart.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item) };
+      }
+      return { cart: [...state.cart, { ...product, quantity: 1 }] };
     }),
-    {
-      name: 'addanki-express-mock-db-v3', // Schema upgrade
-    }
-  )
+    removeFromCart: (productId) => set((state) => {
+      const existing = state.cart.find(item => item.id === productId);
+      if (existing && existing.quantity > 1) {
+        return { cart: state.cart.map(item => item.id === productId ? { ...item, quantity: item.quantity - 1 } : item) };
+      }
+      return { cart: state.cart.filter(item => item.id !== productId) };
+    }),
+    clearCart: () => set({ cart: [] }),
+
+    // ---- Orders ----
+    orders: [],
+    placeOrder: (orderData) => {
+      const state = get();
+      const onlineAgents = state.agents.filter(a => a.isOnline);
+      const activeOrders = state.orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'DENIED');
+      const busyAgentIds = activeOrders.map(o => o.agentId).filter(Boolean);
+      
+      const freeAgents = onlineAgents.filter(a => !busyAgentIds.includes(a.id));
+      const sortedFreeAgents = [...freeAgents].sort((a,b) => state.agents.findIndex(ag=>ag.id===a.id) - state.agents.findIndex(ag=>ag.id===b.id));
+
+      const assignedAgent = sortedFreeAgents.length > 0 ? sortedFreeAgents[0].id : (onlineAgents.length > 0 ? onlineAgents[0].id : undefined);
+
+      const newOrder: Order = {
+        ...orderData,
+        id: Math.random().toString(36).substring(7),
+        status: 'PENDING',
+        agentId: assignedAgent,
+        agentStatus: assignedAgent ? 'PENDING' : undefined,
+        agentAssignedAt: assignedAgent ? Date.now() : undefined
+      };
+
+      set({ orders: [...state.orders, newOrder], cart: [] });
+      db.insertOrder(newOrder).catch(console.error);
+    },
+    updateOrderStatus: (orderId, newStatus) => {
+      set((state) => ({
+        orders: state.orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
+      }));
+      db.updateOrderFields(orderId, { status: newStatus }).catch(console.error);
+    },
+    reassignAgent: (orderId, newAgentId) => {
+      const now = Date.now();
+      set((state) => ({
+        orders: state.orders.map(o => o.id === orderId ? { ...o, agentId: newAgentId, agentStatus: 'PENDING' as const, agentAssignedAt: now } : o)
+      }));
+      db.updateOrderFields(orderId, {
+        agent_id: newAgentId,
+        agent_status: 'PENDING',
+        agent_assigned_at: now,
+      }).catch(console.error);
+    },
+    acceptAgentOrder: (orderId) => {
+      set((state) => ({
+        orders: state.orders.map(o => o.id === orderId ? { ...o, agentStatus: 'ACCEPTED' as const } : o)
+      }));
+      db.updateOrderFields(orderId, { agent_status: 'ACCEPTED' }).catch(console.error);
+    },
+  })
 );
