@@ -1,0 +1,16 @@
+{
+  "name": "Addanki Express",
+  "short_name": "Addanki Exp",
+  "description": "Hyperlocal quick-commerce startup in Addanki.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FCF9F1",
+  "theme_color": "#228B22",
+  "icons": [
+    {
+      "src": "/windows11/Square150x150Logo.scale-100.png",
+      "sizes": "150x150",
+      "type": "image/png"
+    }
+  ]
+}
