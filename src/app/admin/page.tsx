@@ -1,7 +1,7 @@
 "use client";
 
-import { useAppStore, Merchant, Product, Banner } from "@/store/useStore";
-import { LogOut, Activity, Users, Box, AlertTriangle, Plus, Edit2, X, Image as ImageIcon, Power, Truck, UploadCloud, Megaphone, Trash2, DollarSign } from "lucide-react";
+import { useAppStore, Merchant, Product, Banner, Agent } from "@/store/useStore";
+import { LogOut, Activity, Users, Box, AlertTriangle, Plus, Edit2, X, Image as ImageIcon, Power, Truck, UploadCloud, Megaphone, Trash2, DollarSign, ShieldAlert, UserX, BarChart3, Phone } from "lucide-react";
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -11,6 +11,10 @@ export default function AdminDashboard() {
   const products = useAppStore(state => state.products);
   const agents = useAppStore(state => state.agents);
   const banners = useAppStore(state => state.banners);
+  const allCustomers = useAppStore(state => state.allCustomers);
+  const toggleCustomerBlock = useAppStore(state => state.toggleCustomerBlock);
+  const addAgent = useAppStore(state => state.addAgent);
+  const removeAgent = useAppStore(state => state.removeAgent);
   
   const setRole = useAppStore(state => state.setRole);
   const addMerchant = useAppStore(state => state.addMerchant);
@@ -23,7 +27,7 @@ export default function AdminDashboard() {
   const updateAgent = useAppStore(state => state.updateAgent);
   const reassignAgent = useAppStore(state => state.reassignAgent);
 
-  const [activeTab, setActiveTab] = useState<"live" | "merchants" | "inventory" | "fleet" | "promos" | "financials">("live");
+  const [activeTab, setActiveTab] = useState<"live" | "merchants" | "inventory" | "fleet" | "promos" | "financials" | "customers">("live");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [editingCreds, setEditingCreds] = useState<{id: string, type: 'merchant'|'agent'} | null>(null);
   const [tempCreds, setTempCreds] = useState('');
@@ -37,6 +41,11 @@ export default function AdminDashboard() {
   const [fPrice, setFPrice] = useState("");
   const [fDesc, setFDesc] = useState("");
   const [fPhoto, setFPhoto] = useState("");
+
+  const [isAddingAgent, setIsAddingAgent] = useState(false);
+  const [aName, setAName] = useState("");
+  const [aPhone, setAPhone] = useState("");
+  const [aCreds, setACreds] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -90,11 +99,23 @@ export default function AdminDashboard() {
     setEditingItem(null);
   };
 
+  const handleAddAgent = () => {
+    if (!aName || !aPhone) return;
+    addAgent({
+      id: "a" + Math.random().toString().substring(2, 6),
+      name: aName,
+      phone: aPhone,
+      isOnline: false,
+      credentials: aCreds || undefined,
+    });
+    setAName(""); setAPhone(""); setACreds(""); setIsAddingAgent(false);
+  };
+
   return (
     <div className="min-h-screen bg-black text-white flex h-screen overflow-hidden font-sans">
       <div className="w-72 bg-white/5 border-r border-white/10 flex flex-col hidden md:flex backdrop-blur-3xl z-20">
         <div className="p-8 font-extrabold text-2xl border-b border-white/10 text-[var(--color-secondary)] tracking-tight">
-          Admin Core <div className="text-xs text-white/40 tracking-widest uppercase mt-1">Addanki Engine</div>
+          Admin Core <div className="text-xs text-white/40 tracking-widest uppercase mt-1">Addanki Mart</div>
         </div>
         <div className="p-4 space-y-2 flex-1 mt-4">
           <button onClick={()=>setActiveTab('live')} className={`w-full px-5 py-4 rounded-2xl flex items-center font-bold transition-all ${activeTab === 'live' ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/20 text-md tracking-wide' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Activity className="mr-3" size={20}/> Live Operations</button>
@@ -103,6 +124,7 @@ export default function AdminDashboard() {
           <button onClick={()=>setActiveTab('fleet')} className={`w-full px-5 py-4 rounded-2xl flex items-center font-bold transition-all ${activeTab === 'fleet' ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/20 text-md tracking-wide' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Truck className="mr-3" size={20}/> Delivery Fleet</button>
           <button onClick={()=>setActiveTab('promos')} className={`w-full px-5 py-4 rounded-2xl flex items-center font-bold transition-all ${activeTab === 'promos' ? 'bg-gradient-to-r from-purple-500 to-blue-600 text-white shadow-lg shadow-purple-500/20 text-md tracking-wide' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Megaphone className="mr-3" size={20}/> Marketing Banners</button>
           <button onClick={()=>setActiveTab('financials')} className={`w-full px-5 py-4 rounded-2xl flex items-center font-bold transition-all ${activeTab === 'financials' ? 'bg-gradient-to-r from-[var(--color-primary)] to-green-800 text-white shadow-lg shadow-green-500/20 text-md tracking-wide' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><DollarSign className="mr-3" size={20}/> Platform Revenue</button>
+          <button onClick={()=>setActiveTab('customers')} className={`w-full px-5 py-4 rounded-2xl flex items-center font-bold transition-all ${activeTab === 'customers' ? 'bg-gradient-to-r from-red-500 to-orange-600 text-white shadow-lg shadow-red-500/20 text-md tracking-wide' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><ShieldAlert className="mr-3" size={20}/> Customers</button>
         </div>
         <button onClick={() => setRole(null)} className="p-8 text-gray-500 font-bold flex items-center hover:text-red-400 transition-colors uppercase tracking-widest text-xs"><LogOut className="mr-3 text-red-500" size={16}/> Terminate Session</button>
       </div>
@@ -113,7 +135,7 @@ export default function AdminDashboard() {
         <div className="flex justify-between items-center mb-10 relative z-10">
           <div>
             <h1 className="text-4xl font-extrabold text-white tracking-tight">
-              {activeTab === 'live' ? 'Command Center' : activeTab === 'merchants' ? 'Merchant Partners' : activeTab === 'fleet' ? 'Fleet Operations' : activeTab === 'promos' ? 'Marketing' : activeTab === 'financials' ? 'Global Revenue' : 'Global Catalog'}
+              {activeTab === 'live' ? 'Command Center' : activeTab === 'merchants' ? 'Merchant Partners' : activeTab === 'fleet' ? 'Fleet Operations' : activeTab === 'promos' ? 'Marketing' : activeTab === 'financials' ? 'Global Revenue' : activeTab === 'customers' ? 'Customer Management' : 'Global Catalog'}
             </h1>
             <p className="text-green-400/80 font-bold tracking-widest text-xs uppercase mt-2">Absolute System Authority Active</p>
           </div>
@@ -259,6 +281,9 @@ export default function AdminDashboard() {
            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 space-y-6">
             <div className="flex justify-between items-center mb-4">
                <h2 className="text-xl font-bold text-white tracking-wide">Dynamic Rider Pool</h2>
+               <button onClick={() => setIsAddingAgent(true)} className="bg-lime-500 text-black px-6 py-3 rounded-xl font-bold flex items-center active:scale-95 transition-transform text-sm tracking-wide">
+                  <Plus size={18} className="mr-2" /> Add Agent
+               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                {agents.map(a => {
@@ -316,6 +341,9 @@ export default function AdminDashboard() {
                      <button onClick={() => toggleAgentStatus(a.id)} className="w-full py-3 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center transition-all border border-white/10 hover:bg-white/5 active:scale-95">
                         <Power size={14} className={`mr-2 ${a.isOnline ? 'text-red-400' : 'text-green-400'}`} /> {a.isOnline ? 'Force Rider Offline' : 'Force Rider Online'}
                      </button>
+                     <button onClick={() => removeAgent(a.id)} className="w-full mt-2 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center justify-center transition-all border border-red-500/20 text-red-400 hover:bg-red-500/10 active:scale-95">
+                        <Trash2 size={12} className="mr-2" /> Remove Agent
+                     </button>
                   </div>
                )})}
             </div>
@@ -353,43 +381,162 @@ export default function AdminDashboard() {
 
         {activeTab === 'financials' && (() => {
            const deliveredCount = allOrders.filter(o => o.status === 'DELIVERED').length;
+           const cancelledCount = allOrders.filter(o => o.status === 'CANCELLED').length;
+           const pendingCount = allOrders.filter(o => o.status === 'PENDING' || o.status === 'PREPARING').length;
+           const activeCount = allOrders.filter(o => o.status === 'OUT_FOR_DELIVERY' || o.status === 'READY_FOR_PICKUP').length;
+           const totalOrders = allOrders.length;
            const gmv = allOrders.filter(o => o.status === 'DELIVERED').reduce((acc,o)=>acc+o.total,0);
-           const platformCommission = gmv * 0.10; // Approx aggregate
+           const platformCommission = gmv * 0.10;
            const deliveryFeesCollected = deliveredCount * 15;
            const riderPayouts = deliveredCount * 20;
            const netPlatformRevenue = (platformCommission + deliveryFeesCollected) - riderPayouts;
+           const avgOrderValue = deliveredCount > 0 ? (gmv / deliveredCount).toFixed(0) : '0';
+
+           // Donut chart data
+           const donutData = [
+             { label: 'Commission', value: platformCommission, color: '#4ade80' },
+             { label: 'Delivery Fees', value: deliveryFeesCollected, color: '#facc15' },
+             { label: 'Rider Payouts', value: riderPayouts, color: '#ef4444' },
+           ];
+           const donutTotal = donutData.reduce((a,d) => a+d.value, 0) || 1;
+           let donutOffset = 0;
+
+           // Bar chart data
+           const barData = [
+             { label: 'Delivered', value: deliveredCount, color: '#4ade80' },
+             { label: 'Active', value: activeCount, color: '#3b82f6' },
+             { label: 'Pending', value: pendingCount, color: '#f59e0b' },
+             { label: 'Cancelled', value: cancelledCount, color: '#ef4444' },
+           ];
+           const barMax = Math.max(...barData.map(b => b.value), 1);
            
            return (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 w-full max-w-4xl mx-auto space-y-6">
-                 <div className="bg-gradient-to-br from-gray-900 to-black p-10 rounded-[3rem] border border-white/20 shadow-2xl relative overflow-hidden">
-                    <div className="absolute inset-0 z-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#4ade80 1px, transparent 1px), linear-gradient(90deg, #4ade80 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
-                    <div className="relative z-10 flex flex-col justify-center items-center text-center">
-                       <p className="text-green-400 font-extrabold tracking-widest uppercase text-xs mb-2">Platform Net Profits</p>
-                       <h2 className="text-7xl font-black text-white">₹{netPlatformRevenue.toFixed(0)}</h2>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 w-full max-w-5xl mx-auto space-y-6">
+                 {/* KPI Cards */}
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6"><p className="text-gray-400 text-[10px] uppercase font-black tracking-widest mb-1">GMV</p><p className="text-4xl font-black text-white">₹{gmv}</p></div>
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6"><p className="text-gray-400 text-[10px] uppercase font-black tracking-widest mb-1">Net Revenue</p><p className="text-4xl font-black text-green-400">₹{netPlatformRevenue.toFixed(0)}</p></div>
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6"><p className="text-gray-400 text-[10px] uppercase font-black tracking-widest mb-1">Total Orders</p><p className="text-4xl font-black text-blue-400">{totalOrders}</p></div>
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6"><p className="text-gray-400 text-[10px] uppercase font-black tracking-widest mb-1">Avg Order ₹</p><p className="text-4xl font-black text-[#FFD700]">₹{avgOrderValue}</p></div>
+                 </div>
+
+                 {/* Charts Row */}
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Donut Chart */}
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
+                       <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">Revenue Breakdown</h3>
+                       <div className="flex items-center justify-center">
+                          <svg viewBox="0 0 42 42" className="w-48 h-48">
+                             <circle cx="21" cy="21" r="15.9" fill="transparent" stroke="#333" strokeWidth="5" />
+                             {donutData.map((d, i) => {
+                                const pct = (d.value / donutTotal) * 100;
+                                const dash = `${pct} ${100 - pct}`;
+                                const offset = donutOffset;
+                                donutOffset += pct;
+                                return <circle key={i} cx="21" cy="21" r="15.9" fill="transparent" stroke={d.color} strokeWidth="5" strokeDasharray={dash} strokeDashoffset={-offset + 25} strokeLinecap="round" />;
+                             })}
+                             <text x="21" y="20" textAnchor="middle" className="fill-white text-[5px] font-black">₹{netPlatformRevenue.toFixed(0)}</text>
+                             <text x="21" y="24" textAnchor="middle" className="fill-gray-400 text-[2.5px] font-bold">NET PROFIT</text>
+                          </svg>
+                       </div>
+                       <div className="flex justify-center space-x-4 mt-4">
+                          {donutData.map((d,i) => (
+                             <div key={i} className="flex items-center space-x-1.5"><div className="w-2.5 h-2.5 rounded-full" style={{background:d.color}}></div><span className="text-[10px] font-bold text-gray-400">{d.label}</span></div>
+                          ))}
+                       </div>
+                    </div>
+
+                    {/* Bar Chart */}
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
+                       <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">Orders by Status</h3>
+                       <div className="space-y-4 mt-6">
+                          {barData.map((b,i) => (
+                             <div key={i}>
+                                <div className="flex justify-between mb-1"><span className="text-xs font-bold text-gray-300">{b.label}</span><span className="text-xs font-black text-white">{b.value}</span></div>
+                                <div className="w-full h-6 bg-white/5 rounded-full overflow-hidden"><motion.div initial={{width:0}} animate={{width:`${(b.value/barMax)*100}%`}} transition={{duration:0.8,delay:i*0.1}} className="h-full rounded-full" style={{background:b.color}}/></div>
+                             </div>
+                          ))}
+                       </div>
                     </div>
                  </div>
 
+                 {/* Breakdown Table */}
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
-                       <p className="text-gray-400 text-[10px] uppercase font-black tracking-widest mb-1">Gross Merchandise Value (GMV)</p>
-                       <p className="text-3xl font-extrabold text-white">₹{gmv.toFixed(0)}</p>
+                       <h3 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-4">Revenue Ledger</h3>
+                       <div className="space-y-3">
+                          <div className="flex justify-between font-bold text-sm border-b border-white/5 pb-2"><span className="text-gray-400">Gross Sales</span><span className="text-white">₹{gmv}</span></div>
+                          <div className="flex justify-between font-bold text-sm border-b border-white/5 pb-2"><span className="text-green-400">Commission (10%)</span><span className="text-green-400">+₹{platformCommission.toFixed(0)}</span></div>
+                          <div className="flex justify-between font-bold text-sm border-b border-white/5 pb-2"><span className="text-yellow-400">Delivery Fees</span><span className="text-yellow-400">+₹{deliveryFeesCollected}</span></div>
+                          <div className="flex justify-between font-bold text-sm border-b border-white/5 pb-2"><span className="text-red-400">Rider Payouts</span><span className="text-red-400">-₹{riderPayouts}</span></div>
+                          <div className="flex justify-between font-black text-lg pt-1"><span className="text-green-400">Net Profit</span><span className="text-green-400">₹{netPlatformRevenue.toFixed(0)}</span></div>
+                       </div>
                     </div>
-                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
-                       <p className="text-gray-400 text-[10px] uppercase font-black tracking-widest mb-1">Merchant Payouts Matrix</p>
-                       <p className="text-3xl font-extrabold text-blue-400">₹{(gmv - platformCommission).toFixed(0)}</p>
-                    </div>
-                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
-                       <p className="text-gray-400 text-[10px] uppercase font-black tracking-widest mb-1">Total Delivery Surcharges Collected</p>
-                       <p className="text-3xl font-extrabold text-[#FFD700]">₹{deliveryFeesCollected}</p>
-                    </div>
-                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
-                       <p className="text-gray-400 text-[10px] uppercase font-black tracking-widest mb-1">Fleet Disbursements / Subsidies</p>
-                       <p className="text-3xl font-extrabold text-red-500">-₹{riderPayouts}</p>
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col justify-center items-center text-center">
+                       <BarChart3 size={48} className="text-green-500 mb-3 opacity-60" />
+                       <p className="text-sm font-bold text-gray-400">Merchant payouts: <span className="text-blue-400 font-extrabold">₹{(gmv - platformCommission).toFixed(0)}</span></p>
+                       <p className="text-sm font-bold text-gray-400 mt-1">Active stores: <span className="text-white font-extrabold">{merchants.filter(m=>!m.isOffline).length}</span></p>
                     </div>
                  </div>
               </motion.div>
            );
         })()}
+
+        {/* ====== Customers Tab ====== */}
+        {activeTab === 'customers' && (
+           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 w-full max-w-4xl mx-auto space-y-6">
+              <div className="bg-white/5 backdrop-blur-xl rounded-[2.5rem] border border-white/10 overflow-hidden">
+                 <div className="p-8 border-b border-white/10 flex justify-between items-center bg-white/5">
+                    <div>
+                       <h2 className="text-lg font-bold text-white tracking-wide">Registered Customers</h2>
+                       <p className="text-gray-400 text-xs mt-1">{allCustomers.length} total accounts</p>
+                    </div>
+                 </div>
+                 <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                       <thead className="bg-white/5 border-b border-white/5 text-[10px] uppercase font-bold text-gray-400 tracking-widest">
+                          <tr>
+                             <th className="px-8 py-5">Customer</th>
+                             <th className="px-8 py-5">Phone</th>
+                             <th className="px-8 py-5">Orders</th>
+                             <th className="px-8 py-5">Status</th>
+                             <th className="px-8 py-5">Action</th>
+                          </tr>
+                       </thead>
+                       <tbody>
+                          {allCustomers.length === 0 ? (
+                             <tr><td colSpan={5} className="px-8 py-10 text-center text-gray-500 font-bold">No customers registered yet</td></tr>
+                          ) : allCustomers.map(customer => {
+                             const customerOrders = allOrders.filter(o => o.customerAddress?.includes(customer.deliveryAddress || '---'));
+                             return (
+                                <tr key={customer.id} className="border-b border-white/5 text-sm hover:bg-white/5 transition-colors">
+                                   <td className="px-8 py-5">
+                                      <p className="font-bold text-white">{customer.name}</p>
+                                      <p className="text-xs text-gray-500">{customer.email || 'No email'}</p>
+                                   </td>
+                                   <td className="px-8 py-5 font-mono text-gray-300">{customer.phone || '-'}</td>
+                                   <td className="px-8 py-5 font-bold text-[var(--color-secondary)]">{customerOrders.length}</td>
+                                   <td className="px-8 py-5">
+                                      {customer.isBlocked ? (
+                                         <span className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-red-500/20 text-red-400 border border-red-500/30">🚩 Blocked</span>
+                                      ) : (
+                                         <span className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-green-500/20 text-green-400 border border-green-500/30">Active</span>
+                                      )}
+                                   </td>
+                                   <td className="px-8 py-5">
+                                      <button onClick={() => toggleCustomerBlock(customer.id!)} className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest active:scale-95 transition-all border ${customer.isBlocked ? 'border-green-500/30 text-green-400 hover:bg-green-500/10' : 'border-red-500/30 text-red-400 hover:bg-red-500/10'}`}>
+                                         {customer.isBlocked ? 'Unblock' : '🚩 Red Flag'}
+                                      </button>
+                                   </td>
+                                </tr>
+                             );
+                          })}
+                       </tbody>
+                    </table>
+                 </div>
+              </div>
+           </motion.div>
+        )}
 
         {/* Modals */}
         <AnimatePresence>
@@ -538,6 +685,34 @@ export default function AdminDashboard() {
                    </div>
                    <button onClick={saveOverride} className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white font-extrabold py-4 rounded-xl shadow-lg shadow-green-500/20 active:scale-95 transition-transform mt-6">
                       Save Override
+                   </button>
+                 </div>
+               </motion.div>
+            </div>
+          )}
+
+          {isAddingAgent && (
+            <div key="add-agent-modal" className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+               <motion.div initial={{ y: 50, scale: 0.9, opacity: 0 }} animate={{ y: 0, scale: 1, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="bg-gray-900 rounded-[2rem] shadow-2xl p-8 w-full max-w-md border border-white/10">
+                 <div className="flex justify-between items-center mb-6">
+                   <h2 className="text-2xl font-extrabold text-white">Add New Agent</h2>
+                   <button onClick={() => setIsAddingAgent(false)} className="bg-white/10 text-gray-400 p-2 rounded-full hover:bg-white/20 hover:text-white transition-colors"><X size={20}/></button>
+                 </div>
+                 <div className="space-y-4">
+                   <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Agent Name</label>
+                      <input value={aName} onChange={e=>setAName(e.target.value)} className="w-full bg-white/10 border border-white/20 p-3 rounded-xl focus:border-lime-500 outline-none font-bold text-white" placeholder="e.g. Ravi Kumar" />
+                   </div>
+                   <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Phone Number</label>
+                      <input value={aPhone} onChange={e=>setAPhone(e.target.value)} className="w-full bg-white/10 border border-white/20 p-3 rounded-xl focus:border-lime-500 outline-none font-bold text-white" placeholder="e.g. 9876543210" />
+                   </div>
+                   <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Access Key (PIN)</label>
+                      <input value={aCreds} onChange={e=>setACreds(e.target.value)} className="w-full bg-white/10 border border-white/20 p-3 rounded-xl focus:border-lime-500 outline-none font-bold text-white" placeholder="e.g. 1234" />
+                   </div>
+                   <button onClick={handleAddAgent} className="w-full bg-lime-500 text-black font-extrabold py-4 rounded-xl active:scale-95 transition-transform mt-6">
+                      Register Agent
                    </button>
                  </div>
                </motion.div>

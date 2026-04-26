@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Addanki Express",
+  title: "Addanki Mart",
   description: "Hyperlocal quick-commerce in Addanki.",
   manifest: "/manifest.json",
 };

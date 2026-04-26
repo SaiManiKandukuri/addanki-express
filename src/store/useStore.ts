@@ -7,11 +7,13 @@ export interface Banner {
 }
 
 export interface CustomerProfile {
+  id?: string;
   name: string;
   phone: string;
   credentials?: string;
   email: string;
   deliveryAddress: string;
+  isBlocked?: boolean;
 }
 
 export type UserRole = 'customer' | 'merchant' | 'agent' | 'admin' | null;
@@ -38,7 +40,7 @@ export interface Product {
   merchantId: string;
   name: string;
   price: number;
-  mrp?: number; // Added Striked Price target
+  mrp?: number;
   category: 'Milk' | 'Meat' | 'Veggies' | 'Kirana' | 'Snacks';
   inStock: boolean;
   photoUrl?: string;
@@ -49,7 +51,7 @@ export interface CartItem extends Product {
   quantity: number;
 }
 
-export type OrderStatus = 'PENDING' | 'PREPARING' | 'READY_FOR_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'DENIED';
+export type OrderStatus = 'PENDING' | 'PREPARING' | 'READY_FOR_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'DENIED' | 'CANCELLED' | 'RETURN_REQUESTED';
 
 export interface Order {
   id: string;
@@ -62,7 +64,6 @@ export interface Order {
   extraStopSurcharge: number;
   merchantIds: string[];
   
-  // Phase 8 telemetry
   agentId?: string;
   agentStatus?: 'PENDING' | 'ACCEPTED';
   agentAssignedAt?: number;
@@ -82,6 +83,8 @@ interface AppState {
   
   customerProfile: CustomerProfile;
   updateCustomerProfile: (updates: Partial<CustomerProfile>) => void;
+  allCustomers: CustomerProfile[];
+  toggleCustomerBlock: (id: string) => void;
 
   merchants: Merchant[];
   agents: Agent[];
@@ -97,6 +100,9 @@ interface AppState {
   addMerchant: (merchant: Merchant) => void;
   updateMerchant: (merchantId: string, updates: Partial<Merchant>) => void;
   toggleMerchantStatus: (merchantId: string) => void;
+  
+  addAgent: (agent: Agent) => void;
+  removeAgent: (id: string) => void;
   updateAgent: (agentId: string, updates: Partial<Agent>) => void;
   toggleAgentStatus: (agentId: string) => void;
 
@@ -108,6 +114,8 @@ interface AppState {
   orders: Order[];
   placeOrder: (order: Omit<Order, 'id' | 'status' | 'agentId' | 'agentStatus' | 'agentAssignedAt'>) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+  cancelOrder: (orderId: string) => void;
+  requestReturn: (orderId: string) => void;
   reassignAgent: (orderId: string, newAgentId: string) => void;
   acceptAgentOrder: (orderId: string) => void;
 }
@@ -118,7 +126,6 @@ export const useAppStore = create<AppState>()(
     isHydrated: false,
     hydrate: async () => {
       try {
-        // Test connection first
         const connected = await db.testConnection();
         if (!connected) {
           console.error('🔴 Supabase connection failed — app will run with empty data');
@@ -126,13 +133,14 @@ export const useAppStore = create<AppState>()(
           return;
         }
 
-        const [merchants, agents, products, orders, banners, profile] = await Promise.all([
+        const [merchants, agents, products, orders, banners, profile, allCustomers] = await Promise.all([
           db.fetchMerchants(),
           db.fetchAgents(),
           db.fetchProducts(),
           db.fetchOrders(),
           db.fetchBanners(),
           db.fetchCustomerProfile('c1'),
+          db.fetchAllCustomerProfiles(),
         ]);
         console.log('✅ Hydration complete:', { merchants: merchants.length, agents: agents.length, products: products.length, orders: orders.length, banners: banners.length });
         set({
@@ -141,6 +149,7 @@ export const useAppStore = create<AppState>()(
           products,
           orders,
           banners,
+          allCustomers,
           customerProfile: profile || {
             name: 'Guest',
             phone: '',
@@ -151,7 +160,6 @@ export const useAppStore = create<AppState>()(
         });
       } catch (err) {
         console.error('🔴 Supabase hydration failed:', err);
-        // Still mark as hydrated so the app renders (with empty data)
         set({ isHydrated: true });
       }
     },
@@ -178,6 +186,18 @@ export const useAppStore = create<AppState>()(
       db.upsertCustomerProfile('c1', newProfile).catch(console.error);
     },
 
+    // ---- All Customers (Admin) ----
+    allCustomers: [],
+    toggleCustomerBlock: (id) => {
+      const customer = get().allCustomers.find(c => c.id === id);
+      if (!customer) return;
+      const newBlocked = !customer.isBlocked;
+      set((state) => ({
+        allCustomers: state.allCustomers.map(c => c.id === id ? { ...c, isBlocked: newBlocked } : c)
+      }));
+      db.updateCustomerBlock(id, newBlocked).catch(console.error);
+    },
+
     // ---- Merchants ----
     merchants: [],
     addMerchant: (merchant) => {
@@ -202,6 +222,14 @@ export const useAppStore = create<AppState>()(
 
     // ---- Agents ----
     agents: [],
+    addAgent: (agent) => {
+      set((state) => ({ agents: [...state.agents, agent] }));
+      db.insertAgent(agent).catch(console.error);
+    },
+    removeAgent: (id) => {
+      set((state) => ({ agents: state.agents.filter(a => a.id !== id) }));
+      db.deleteAgent(id).catch(console.error);
+    },
     updateAgent: (agentId, updates) => {
       set((state) => ({
         agents: state.agents.map(a => a.id === agentId ? { ...a, ...updates } : a)
@@ -274,7 +302,7 @@ export const useAppStore = create<AppState>()(
     placeOrder: (orderData) => {
       const state = get();
       const onlineAgents = state.agents.filter(a => a.isOnline);
-      const activeOrders = state.orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'DENIED');
+      const activeOrders = state.orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'DENIED' && o.status !== 'CANCELLED');
       const busyAgentIds = activeOrders.map(o => o.agentId).filter(Boolean);
       
       const freeAgents = onlineAgents.filter(a => !busyAgentIds.includes(a.id));
@@ -299,6 +327,18 @@ export const useAppStore = create<AppState>()(
         orders: state.orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
       }));
       db.updateOrderFields(orderId, { status: newStatus }).catch(console.error);
+    },
+    cancelOrder: (orderId) => {
+      set((state) => ({
+        orders: state.orders.map(o => o.id === orderId ? { ...o, status: 'CANCELLED' as OrderStatus } : o)
+      }));
+      db.updateOrderFields(orderId, { status: 'CANCELLED' }).catch(console.error);
+    },
+    requestReturn: (orderId) => {
+      set((state) => ({
+        orders: state.orders.map(o => o.id === orderId ? { ...o, status: 'RETURN_REQUESTED' as OrderStatus } : o)
+      }));
+      db.updateOrderFields(orderId, { status: 'RETURN_REQUESTED' }).catch(console.error);
     },
     reassignAgent: (orderId, newAgentId) => {
       const now = Date.now();

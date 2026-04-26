@@ -274,7 +274,7 @@ export default function LoginPage() {
             >
               <Store size={36} className="text-white" />
             </motion.div>
-            <h1 className="text-4xl font-extrabold tracking-tight">Addanki <span className="text-[var(--color-primary)]">Express</span></h1>
+            <h1 className="text-4xl font-extrabold tracking-tight">Addanki <span className="text-[var(--color-primary)]">Mart</span></h1>
             <p className="text-gray-500 mt-2 font-medium tracking-wide">Hyperlocal Engine</p>
           </div>
           

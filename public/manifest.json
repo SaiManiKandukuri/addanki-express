@@ -1,7 +1,7 @@
 {
-  "name": "Addanki Express",
-  "short_name": "Addanki Exp",
-  "description": "Hyperlocal quick-commerce startup in Addanki.",
+  "name": "Addanki Mart",
+  "short_name": "Addanki Mart",
+  "description": "Hyperlocal quick-commerce in Addanki.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FCF9F1",

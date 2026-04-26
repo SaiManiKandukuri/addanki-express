@@ -128,7 +128,7 @@ export default function SupabaseProvider({ children }: { children: React.ReactNo
           color: '#1a1a1a',
           letterSpacing: '-0.02em',
         }}>
-          Addanki Express
+          Addanki Mart
         </p>
         <p style={{
           fontFamily: 'system-ui, -apple-system, sans-serif',

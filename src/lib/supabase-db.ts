@@ -113,6 +113,27 @@ export async function updateAgentFields(id: string, updates: Partial<Agent>): Pr
   logDbSuccess('UPDATE', 'agents', data);
 }
 
+export async function insertAgent(agent: Agent): Promise<void> {
+  const payload = {
+    id: agent.id,
+    name: agent.name,
+    is_online: agent.isOnline,
+    phone: agent.phone,
+    credentials: agent.credentials ?? null,
+  };
+  logDbOp('INSERT', 'agents', payload);
+  const { data, error } = await supabase.from('agents').insert(payload).select();
+  if (error) { logDbError('INSERT', 'agents', error); throw error; }
+  logDbSuccess('INSERT', 'agents', data);
+}
+
+export async function deleteAgent(id: string): Promise<void> {
+  logDbOp('DELETE', 'agents', { id });
+  const { error } = await supabase.from('agents').delete().eq('id', id);
+  if (error) { logDbError('DELETE', 'agents', error); throw error; }
+  logDbSuccess('DELETE', 'agents', { id });
+}
+
 // ============================================
 // Products
 // ============================================
@@ -284,4 +305,26 @@ export async function upsertCustomerProfile(id: string, profile: CustomerProfile
   const { data, error } = await supabase.from('customer_profiles').upsert(payload).select();
   if (error) { logDbError('UPSERT', 'customer_profiles', error); throw error; }
   logDbSuccess('UPSERT', 'customer_profiles', data);
+}
+
+export async function fetchAllCustomerProfiles(): Promise<CustomerProfile[]> {
+  logDbOp('SELECT', 'customer_profiles (all)');
+  const { data, error } = await supabase.from('customer_profiles').select('*');
+  if (error) { logDbError('SELECT', 'customer_profiles', error); return []; }
+  logDbSuccess('SELECT', 'customer_profiles', `${data?.length} rows`);
+  return (data || []).map(row => ({
+    id: row.id,
+    name: row.name,
+    phone: row.phone,
+    email: row.email,
+    deliveryAddress: row.delivery_address,
+    isBlocked: row.is_blocked ?? false,
+  }));
+}
+
+export async function updateCustomerBlock(id: string, isBlocked: boolean): Promise<void> {
+  logDbOp('UPDATE', 'customer_profiles', { id, is_blocked: isBlocked });
+  const { data, error } = await supabase.from('customer_profiles').update({ is_blocked: isBlocked }).eq('id', id).select();
+  if (error) { logDbError('UPDATE', 'customer_profiles', error); throw error; }
+  logDbSuccess('UPDATE', 'customer_profiles', data);
 }
