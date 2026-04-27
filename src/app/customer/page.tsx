@@ -58,7 +58,7 @@ export default function CustomerHome() {
   if (!mounted) return <div className="min-h-screen bg-[var(--color-softcream)] animate-pulse" />;
 
   return (
-    <div className="min-h-screen bg-[var(--color-softcream)] space-y-8 max-w-md mx-auto relative pb-10">
+    <div className="min-h-screen bg-[var(--color-softcream)] space-y-8 max-w-md mx-auto relative">
       {/* ====== Branded Header ====== */}
       <div className="bg-white/70 backdrop-blur-3xl sticky top-0 z-30 pt-4 pb-4 px-5 border-b border-white shadow-sm flex flex-col space-y-4">
         <div className="flex justify-between items-center w-full relative">
@@ -253,7 +253,7 @@ export default function CustomerHome() {
           </div>
           <div>
             <h3 className="text-lg font-extrabold tracking-tight leading-none">Addanki <span className="text-green-400">Mart</span></h3>
-            <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">{t("Quick Commerce • Addanki", "క్విక్ కామర్స్ • అద్దంకి")}</p>
+            <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">{t("From shops to your door", "దుకాణాల నుండి మీ ఇంటికి")}</p>
           </div>
         </div>
 
@@ -281,8 +281,11 @@ export default function CustomerHome() {
             <a href="tel:9346701988" className="flex items-center text-sm font-bold text-green-400 mb-2 hover:underline">
               <Phone size={13} className="mr-2" /> 9346701988
             </a>
-            <a href="https://wa.me/919346701988" target="_blank" className="flex items-center text-sm font-bold text-green-400 hover:underline">
+            <a href="https://wa.me/919346701988" target="_blank" className="flex items-center text-sm font-bold text-green-400 mb-2 hover:underline">
               <MessageCircle size={13} className="mr-2" /> WhatsApp
+            </a>
+            <a href="https://www.instagram.com/k_sai_mani_18/" target="_blank" className="flex items-center text-sm font-bold text-green-400 hover:underline">
+              <svg className="mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg> Instagram
             </a>
           </div>
         </div>
@@ -379,8 +382,9 @@ export default function CustomerHome() {
                   </div>
                   <div className="bg-gray-50 rounded-2xl p-5 mb-6 border border-gray-100">
                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">{t("Contact Person", "సంప్రదింపు వ్యక्తి")}</p>
-                     <p className="text-xl font-extrabold text-gray-900">SAI MANI KANDUKURI</p>
-                     <p className="text-lg font-bold text-[var(--color-primary)] mt-1">9346701988</p>
+                     <p className="text-xl font-extrabold text-gray-900 leading-tight">SAI MANI KANDUKURI</p>
+                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">S/O Koteswara Rao</p>
+                     <p className="text-lg font-bold text-[var(--color-primary)]">9346701988</p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                      <a href="tel:9346701988" className="flex items-center justify-center bg-[var(--color-primary)] text-white font-bold py-4 rounded-xl active:scale-95 transition-transform shadow-lg shadow-green-500/20">
