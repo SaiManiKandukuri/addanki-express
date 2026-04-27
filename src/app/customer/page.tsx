@@ -244,6 +244,57 @@ export default function CustomerHome() {
         </div>
       </div>
 
+      {/* ====== Footer ====== */}
+      <footer className="bg-gray-900 text-white mt-8 px-5 pt-10 pb-28 rounded-t-[2.5rem]">
+        {/* Brand */}
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/20">
+            <ShoppingCart size={20} className="text-white" />
+          </div>
+          <div>
+            <h3 className="text-lg font-extrabold tracking-tight leading-none">Addanki <span className="text-green-400">Mart</span></h3>
+            <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">{t("Quick Commerce • Addanki", "క్విక్ కామర్స్ • అద్దంకి")}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-8 mb-8">
+          {/* Quick Links */}
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-3">{t("Quick Links", "త్వరిత లింకులు")}</p>
+            <div className="space-y-2.5">
+              <Link href="/customer/orders" className="block text-sm font-bold text-gray-300 hover:text-green-400 transition-colors">
+                <History size={13} className="inline mr-2 text-gray-500" />{t("Order History", "ఆర్డర్ హిస్టరీ")}
+              </Link>
+              <button onClick={() => setShowSupport(true)} className="block text-sm font-bold text-gray-300 hover:text-green-400 transition-colors text-left">
+                <HeadphonesIcon size={13} className="inline mr-2 text-gray-500" />{t("Customer Support", "కస్టమర్ సపోర్ట్")}
+              </button>
+              <button onClick={() => setShowProfile(true)} className="block text-sm font-bold text-gray-300 hover:text-green-400 transition-colors text-left">
+                <User size={13} className="inline mr-2 text-gray-500" />{t("My Profile", "నా ప్రొఫైల్")}
+              </button>
+            </div>
+          </div>
+
+          {/* Customer Care */}
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-3">{t("Customer Care", "కస్టమర్ కేర్")}</p>
+            <p className="text-sm font-extrabold text-white mb-1">SAI MANI KANDUKURI</p>
+            <a href="tel:9346701988" className="flex items-center text-sm font-bold text-green-400 mb-2 hover:underline">
+              <Phone size={13} className="mr-2" /> 9346701988
+            </a>
+            <a href="https://wa.me/919346701988" target="_blank" className="flex items-center text-sm font-bold text-green-400 hover:underline">
+              <MessageCircle size={13} className="mr-2" /> WhatsApp
+            </a>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-white/10 pt-6 flex flex-col items-center text-center space-y-2">
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t("Serving Addanki & Surroundings", "అద్దంకి & చుట్టుపక్కల సేవలు")}</p>
+          <p className="text-xs text-gray-600">© {new Date().getFullYear()} Addanki Mart. {t("All rights reserved.", "అన్ని హక్కులు ప్రత్యేకించబడ్డాయి.")}</p>
+          <p className="text-[10px] text-gray-700 font-medium">{t("Made with ❤️ in Addanki", "అద్దంకిలో ❤️ తో తయారు చేయబడింది")}</p>
+        </div>
+      </footer>
+
       {activeOrders.length > 0 && (
           <div className={`fixed left-0 right-0 p-4 z-40 bg-gradient-to-t from-white via-white to-transparent pointer-events-none transition-all ${cart.length > 0 ? "bottom-[72px] pb-4" : "bottom-0 pb-8"}`}>
              <div className="max-w-md mx-auto pointer-events-auto">
