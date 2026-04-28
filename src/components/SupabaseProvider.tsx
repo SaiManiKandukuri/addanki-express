@@ -34,7 +34,7 @@ export default function SupabaseProvider({ children }: { children: React.ReactNo
     // This guarantees cross-device sync even if realtime WebSocket fails
     const poll = async () => {
       try {
-        const [merchants, agents, products, orders, banners, profile, allCustomers] = await Promise.all([
+        const [merchants, agents, products, orders, banners, profile, allCustomers, categories] = await Promise.all([
           db.fetchMerchants(),
           db.fetchAgents(),
           db.fetchProducts(),
@@ -42,6 +42,7 @@ export default function SupabaseProvider({ children }: { children: React.ReactNo
           db.fetchBanners(),
           db.fetchCustomerProfile('c1'),
           db.fetchAllCustomerProfiles(),
+          db.fetchCategories(),
         ]);
 
         // Only update if data actually changed (avoid unnecessary re-renders)
@@ -69,6 +70,9 @@ export default function SupabaseProvider({ children }: { children: React.ReactNo
         }
         if (JSON.stringify(state.allCustomers) !== JSON.stringify(allCustomers)) {
           changed.allCustomers = allCustomers;
+        }
+        if (JSON.stringify(state.categories) !== JSON.stringify(categories)) {
+          changed.categories = categories.sort((a,b) => a.displayOrder - b.displayOrder);
         }
 
         if (Object.keys(changed).length > 0) {

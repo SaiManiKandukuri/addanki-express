@@ -12,11 +12,14 @@ export default function MerchantDashboard() {
   const toggleProductStock = useAppStore(state => state.toggleProductStock);
   const addProduct = useAppStore(state => state.addProduct);
   const editProduct = useAppStore(state => state.editProduct);
+  const categories = useAppStore(state => state.categories);
+  const addCategory = useAppStore(state => state.addCategory);
+  const removeCategory = useAppStore(state => state.removeCategory);
   const setRole = useAppStore(state => state.setRole);
   const merchants = useAppStore(state => state.merchants);
   const toggleMerchantStatus = useAppStore(state => state.toggleMerchantStatus);
 
-  const [activeTab, setActiveTab] = useState<"kanban" | "inventory" | "earnings">("kanban");
+  const [activeTab, setActiveTab] = useState<"kanban" | "inventory" | "earnings" | "categories">("kanban");
   
   const myMerchantId = useAppStore(state => state.currentUserId) || "m1"; 
   const myMerchant = merchants.find(m => m.id === myMerchantId);
@@ -39,7 +42,7 @@ export default function MerchantDashboard() {
   const [fName, setFName] = useState("");
   const [fPrice, setFPrice] = useState("");
   const [fMrp, setFMrp] = useState("");
-  const [fCat, setFCat] = useState<Product['category']>('Kirana');
+  const [fCat, setFCat] = useState("");
   const [fDesc, setFDesc] = useState("");
   const [fPhoto, setFPhoto] = useState("");
 
@@ -103,6 +106,33 @@ export default function MerchantDashboard() {
       if (vibInterval) clearInterval(vibInterval);
     };
   }, [myOrders, activeTab]);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [catName, setCatName] = useState("");
+  const [catPhoto, setCatPhoto] = useState("");
+  const categoryInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCategoryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setCatPhoto(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAddCategory = () => {
+    if (!catName) return;
+    addCategory({
+      id: "cat_" + Math.random().toString(36).substr(2, 6),
+      name: catName,
+      photoUrl: catPhoto,
+      displayOrder: 0,
+      productIds: [],
+      type: 'category',
+      merchantId: myMerchantId
+    });
+    setCatName(""); setCatPhoto(""); setIsAddingCategory(false);
+  };
 
   const advanceOrder = (orderId: string, current: OrderStatus) => {
     let next: OrderStatus = 'PENDING';
@@ -153,11 +183,11 @@ export default function MerchantDashboard() {
       </div>
 
       <div className="flex bg-white/50 backdrop-blur-md sticky top-[80px] z-10 border-b border-gray-200/50">
-        {(['kanban', 'inventory', 'earnings'] as const).map(tab => (
+        {(['kanban', 'inventory', 'categories', 'earnings'] as const).map(tab => (
           <button 
             key={tab} 
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-4 text-xs font-extrabold uppercase tracking-widest transition-all ${
+            className={`flex-1 py-4 text-[10px] font-extrabold uppercase tracking-widest transition-all ${
               activeTab === tab ? 'text-[var(--color-primary)] border-b-[3px] border-[var(--color-primary)] bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-white/40'
             }`}
           >
@@ -339,8 +369,20 @@ export default function MerchantDashboard() {
                    </div>
                    <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Category</label>
-                      <select value={fCat} onChange={e=>setFCat(e.target.value as any)} className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl focus:border-[var(--color-primary)] outline-none font-bold text-gray-600">
-                        <option>Milk</option><option>Meat</option><option>Veggies</option><option>Kirana</option><option>Snacks</option>
+                      <select 
+                        value={fCat} 
+                        onChange={e=>setFCat(e.target.value)} 
+                        className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl focus:border-[var(--color-primary)] outline-none font-bold text-gray-600 appearance-none"
+                      >
+                        <option value="">Select a category...</option>
+                        {categories.filter(c => c.type === 'category' && (c.merchantId === myMerchantId || !c.merchantId)).map(c => (
+                           <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                        {/* Fallback to legacy categories if none defined yet */}
+                        {categories.filter(c => c.type === 'category' && (c.merchantId === myMerchantId || !c.merchantId)).length === 0 && 
+                          ['Milk', 'Meat', 'Veggies', 'Kirana', 'Snacks'].map(c => (
+                           <option key={c} value={c}>{c}</option>
+                        ))}
                       </select>
                    </div>
                    <div>
@@ -370,6 +412,37 @@ export default function MerchantDashboard() {
             </div>
           )}
         </AnimatePresence>
+
+        {activeTab === 'categories' && (
+           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              <div className="flex justify-between items-center bg-white/60 backdrop-blur-xl p-6 rounded-[2rem] border border-white/40 shadow-xl">
+                 <div>
+                    <h2 className="text-xl font-black text-gray-900 tracking-tight">Your Categories</h2>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">Manage shelves for your products</p>
+                 </div>
+                 <button onClick={() => setIsAddingCategory(true)} className="bg-[var(--color-primary)] text-white px-6 py-3 rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-transform shadow-lg shadow-green-500/20 flex items-center">
+                    <Plus className="mr-2" size={18}/> New Category
+                 </button>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                 {categories.filter(c => c.type === 'category' && c.merchantId === myMerchantId).map(cat => (
+                    <div key={cat.id} className="bg-white border border-gray-200 rounded-[2rem] p-4 shadow-sm flex flex-col items-center group relative">
+                       <button onClick={() => removeCategory(cat.id)} className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-all"><X size={12}/></button>
+                       <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-100 mb-3 group-hover:scale-110 transition-transform">
+                          {cat.photoUrl ? <img src={cat.photoUrl} className="w-full h-full object-cover" /> : <Package size={24} className="text-gray-300"/>}
+                       </div>
+                       <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest text-center">{cat.name}</span>
+                    </div>
+                 ))}
+                 {categories.filter(c => c.type === 'category' && c.merchantId === myMerchantId).length === 0 && (
+                    <div className="col-span-full py-12 text-center bg-white/40 rounded-[2rem] border border-dashed border-gray-300">
+                       <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">No custom categories yet</p>
+                    </div>
+                 )}
+              </div>
+           </motion.div>
+        )}
 
         {activeTab === 'earnings' && (
           <div className="max-w-2xl mx-auto space-y-6 pb-20">
@@ -421,6 +494,37 @@ export default function MerchantDashboard() {
             </div>
           </div>
         )}
+        <AnimatePresence>
+          {isAddingCategory && (
+            <div key="add-cat-modal" className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-6">
+               <motion.div initial={{ y: 50, scale: 0.9, opacity: 0 }} animate={{ y: 0, scale: 1, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="bg-white rounded-[2.5rem] shadow-2xl p-8 w-full max-w-sm border border-white">
+                 <div className="flex justify-between items-center mb-6">
+                   <h2 className="text-xl font-black text-gray-900 tracking-tight">Create Category</h2>
+                   <button onClick={() => setIsAddingCategory(false)} className="bg-gray-100 text-gray-500 p-2 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors"><X size={20}/></button>
+                 </div>
+                 <div className="space-y-4">
+                   <div>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Category Name</label>
+                      <input value={catName} onChange={e=>setCatName(e.target.value)} className="w-full bg-white border border-gray-200 p-4 rounded-2xl focus:border-[var(--color-primary)] outline-none font-bold text-gray-900 shadow-inner" placeholder="e.g. Soft Drinks" />
+                   </div>
+                   <div>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Photo (Upload)</label>
+                      <div className="flex space-x-3">
+                         <button onClick={() => categoryInputRef.current?.click()} className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl p-4 flex items-center justify-center hover:bg-gray-100 transition-colors">
+                            <UploadCloud size={24} className="text-gray-400" />
+                         </button>
+                         <input type="file" accept="image/*" ref={categoryInputRef} onChange={handleCategoryUpload} className="hidden" />
+                         {catPhoto && <div className="w-16 h-16 rounded-2xl overflow-hidden border border-gray-200"><img src={catPhoto} className="w-full h-full object-cover" /></div>}
+                      </div>
+                   </div>
+                   <button onClick={handleAddCategory} className="w-full bg-[var(--color-primary)] text-white font-black py-4 rounded-2xl active:scale-95 transition-transform mt-6 shadow-xl shadow-green-500/20 uppercase tracking-widest text-sm">
+                      Create Shelf
+                   </button>
+                 </div>
+               </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

@@ -8,7 +8,7 @@
 @theme inline {
   --color-primary: #228B22;   /* Forest Green */
   --color-secondary: #FFD700; /* Golden Yellow */
-  --color-alert: #FF6B6B;     /* Deep Coral */
+  --color-alert: #ef4444;
   --color-softcream: #FCF9F1; /* Soft Cream */
   --color-purewhite: #FFFFFF; /* Pure White */
   
@@ -31,3 +31,6 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   overscroll-behavior-y: none; /* Good for PWA bounce feel */
 }
+
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

@@ -16,6 +16,11 @@ export default function AdminDashboard() {
   const addAgent = useAppStore(state => state.addAgent);
   const removeAgent = useAppStore(state => state.removeAgent);
   
+  const categories = useAppStore(state => state.categories);
+  const addCategory = useAppStore(state => state.addCategory);
+  const updateCategory = useAppStore(state => state.updateCategory);
+  const removeCategory = useAppStore(state => state.removeCategory);
+  
   const setRole = useAppStore(state => state.setRole);
   const addMerchant = useAppStore(state => state.addMerchant);
   const editProduct = useAppStore(state => state.editProduct);
@@ -27,7 +32,7 @@ export default function AdminDashboard() {
   const updateAgent = useAppStore(state => state.updateAgent);
   const reassignAgent = useAppStore(state => state.reassignAgent);
 
-  const [activeTab, setActiveTab] = useState<"live" | "merchants" | "inventory" | "fleet" | "promos" | "financials" | "customers">("live");
+  const [activeTab, setActiveTab] = useState<"live" | "merchants" | "inventory" | "fleet" | "promos" | "financials" | "customers" | "categories">("live");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [editingCreds, setEditingCreds] = useState<{id: string, type: 'merchant'|'agent'} | null>(null);
   const [tempCreds, setTempCreds] = useState('');
@@ -49,6 +54,7 @@ export default function AdminDashboard() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+  const categoryInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -111,6 +117,49 @@ export default function AdminDashboard() {
     setAName(""); setAPhone(""); setACreds(""); setIsAddingAgent(false);
   };
 
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [catName, setCatName] = useState("");
+  const [catPhoto, setCatPhoto] = useState("");
+  const [catOrder, setCatOrder] = useState("0");
+  const [catProductIds, setCatProductIds] = useState<string[]>([]);
+
+  const handleCategoryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setCatPhoto(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const [isSavingCat, setIsSavingCat] = useState(false);
+  const handleAddCategory = async () => {
+    if (!catName) {
+      alert("Please enter a section name");
+      return;
+    }
+    
+    setIsSavingCat(true);
+    try {
+      const newCat = {
+        id: "cat" + Math.random().toString().substring(2, 6),
+        name: catName,
+        photoUrl: catPhoto,
+        displayOrder: Number(catOrder),
+        productIds: catProductIds,
+        type: 'section' as const
+      };
+      
+      addCategory(newCat);
+      setCatName(""); setCatPhoto(""); setCatOrder("0"); setCatProductIds([]); setIsAddingCategory(false);
+      alert("Section created successfully!");
+    } catch (err: any) {
+      alert("Failed to create section: " + err.message);
+    } finally {
+      setIsSavingCat(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black text-white flex h-screen overflow-hidden font-sans">
       <div className="w-72 bg-white/5 border-r border-white/10 flex flex-col hidden md:flex backdrop-blur-3xl z-20">
@@ -122,6 +171,7 @@ export default function AdminDashboard() {
           <button onClick={()=>setActiveTab('merchants')} className={`w-full px-5 py-4 rounded-2xl flex items-center font-bold transition-all ${activeTab === 'merchants' ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/20 text-md tracking-wide' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Users className="mr-3" size={20}/> Partnerships</button>
           <button onClick={()=>setActiveTab('inventory')} className={`w-full px-5 py-4 rounded-2xl flex items-center font-bold transition-all ${activeTab === 'inventory' ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/20 text-md tracking-wide' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Box className="mr-3" size={20}/> Global Catalog</button>
           <button onClick={()=>setActiveTab('fleet')} className={`w-full px-5 py-4 rounded-2xl flex items-center font-bold transition-all ${activeTab === 'fleet' ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/20 text-md tracking-wide' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Truck className="mr-3" size={20}/> Delivery Fleet</button>
+          <button onClick={()=>setActiveTab('categories')} className={`w-full px-5 py-4 rounded-2xl flex items-center font-bold transition-all ${activeTab === 'categories' ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-500/20 text-md tracking-wide' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Box className="mr-3" size={20}/> Custom Sections</button>
           <button onClick={()=>setActiveTab('promos')} className={`w-full px-5 py-4 rounded-2xl flex items-center font-bold transition-all ${activeTab === 'promos' ? 'bg-gradient-to-r from-purple-500 to-blue-600 text-white shadow-lg shadow-purple-500/20 text-md tracking-wide' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><Megaphone className="mr-3" size={20}/> Marketing Banners</button>
           <button onClick={()=>setActiveTab('financials')} className={`w-full px-5 py-4 rounded-2xl flex items-center font-bold transition-all ${activeTab === 'financials' ? 'bg-gradient-to-r from-[var(--color-primary)] to-green-800 text-white shadow-lg shadow-green-500/20 text-md tracking-wide' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><DollarSign className="mr-3" size={20}/> Platform Revenue</button>
           <button onClick={()=>setActiveTab('customers')} className={`w-full px-5 py-4 rounded-2xl flex items-center font-bold transition-all ${activeTab === 'customers' ? 'bg-gradient-to-r from-red-500 to-orange-600 text-white shadow-lg shadow-red-500/20 text-md tracking-wide' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}><ShieldAlert className="mr-3" size={20}/> Customers</button>
@@ -537,6 +587,46 @@ export default function AdminDashboard() {
               </div>
            </motion.div>
         )}
+        {activeTab === 'categories' && (
+           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10">
+              <div className="flex justify-between items-center mb-8">
+                 <div className="flex items-center space-x-4">
+                    <div className="bg-pink-500/10 p-3 rounded-2xl border border-pink-500/20">
+                       <Box className="text-pink-400" size={24} />
+                    </div>
+                    <h2 className="text-2xl font-bold text-white tracking-tight">Custom Sections</h2>
+                 </div>
+                 <button onClick={() => setIsAddingCategory(true)} className="bg-white text-black px-6 py-3 rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-transform shadow-lg flex items-center">
+                    <Plus className="mr-2" size={18}/> Create New Section
+                 </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 {categories.map(cat => (
+                    <div key={cat.id} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2rem] overflow-hidden group">
+                       <div className="h-40 relative">
+                          {cat.photoUrl ? <img src={cat.photoUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-white/5 flex items-center justify-center"><ImageIcon size={40} className="text-white/10"/></div>}
+                          <div className="absolute top-4 right-4 flex space-x-2">
+                             <button onClick={() => removeCategory(cat.id)} className="p-2 bg-black/50 text-red-400 rounded-full hover:bg-red-500 hover:text-white transition-all"><Trash2 size={16}/></button>
+                          </div>
+                          <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black text-white uppercase tracking-widest border border-white/10">Order: {cat.displayOrder}</div>
+                       </div>
+                       <div className="p-6">
+                          <h3 className="text-xl font-black text-white mb-2">{cat.name}</h3>
+                          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">{cat.productIds.length} Linked Products</p>
+                          <div className="flex flex-wrap gap-2">
+                             {cat.productIds.slice(0, 3).map(pid => {
+                                const p = products.find(prod => prod.id === pid);
+                                return p ? <span key={pid} className="text-[10px] bg-white/5 border border-white/10 px-2 py-1 rounded text-gray-400 font-bold">{p.name}</span> : null;
+                             })}
+                             {cat.productIds.length > 3 && <span className="text-[10px] bg-white/5 border border-white/10 px-2 py-1 rounded text-gray-400 font-bold">+{cat.productIds.length - 3} more</span>}
+                          </div>
+                       </div>
+                    </div>
+                 ))}
+              </div>
+           </motion.div>
+        )}
 
         {/* Modals */}
         <AnimatePresence>
@@ -713,6 +803,72 @@ export default function AdminDashboard() {
                    </div>
                    <button onClick={handleAddAgent} className="w-full bg-lime-500 text-black font-extrabold py-4 rounded-xl active:scale-95 transition-transform mt-6">
                       Register Agent
+                   </button>
+                 </div>
+               </motion.div>
+            </div>
+          )}
+          {isAddingCategory && (
+            <div key="add-category-modal" className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+               <motion.div initial={{ y: 50, scale: 0.9, opacity: 0 }} animate={{ y: 0, scale: 1, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="bg-gray-900 rounded-[2rem] shadow-2xl p-8 w-full max-w-lg border border-white/10 max-h-[90vh] overflow-y-auto">
+                 <div className="flex justify-between items-center mb-6">
+                   <h2 className="text-2xl font-extrabold text-white">Create Section</h2>
+                   <button onClick={() => setIsAddingCategory(false)} className="bg-white/10 text-gray-400 p-2 rounded-full hover:bg-white/20 hover:text-white transition-colors"><X size={20}/></button>
+                 </div>
+                 <div className="space-y-4">
+                   <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Section Name</label>
+                      <input value={catName} onChange={e=>setCatName(e.target.value)} className="w-full bg-white/10 border border-white/20 p-3 rounded-xl focus:border-pink-500 outline-none font-bold text-white" placeholder="e.g. Trending Now" />
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                      <div>
+                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Display Order</label>
+                         <input type="number" value={catOrder} onChange={e=>setCatOrder(e.target.value)} className="w-full bg-white/10 border border-white/20 p-3 rounded-xl focus:border-pink-500 outline-none font-bold text-white" />
+                      </div>
+                      <div>
+                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5">Section Icon/Photo</label>
+                         <div className="flex space-x-2">
+                            <button onClick={() => categoryInputRef.current?.click()} className="bg-white/10 p-3 rounded-xl hover:bg-white/20 transition-colors border border-white/10"><UploadCloud size={20}/></button>
+                            <input type="file" ref={categoryInputRef} onChange={handleCategoryUpload} className="hidden" />
+                            {catPhoto && <img src={catPhoto} className="w-10 h-10 rounded-lg object-cover border border-white/20" />}
+                         </div>
+                      </div>
+                   </div>
+                   
+                   <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Add Products to Section</label>
+                      <div className="bg-black/50 border border-white/10 rounded-2xl p-4 max-h-60 overflow-y-auto space-y-2">
+                         {products.map(p => (
+                            <label key={p.id} className="flex items-center space-x-3 cursor-pointer group">
+                               <input 
+                                 type="checkbox" 
+                                 checked={catProductIds.includes(p.id)} 
+                                 onChange={(e) => {
+                                    if (e.target.checked) setCatProductIds([...catProductIds, p.id]);
+                                    else setCatProductIds(catProductIds.filter(id => id !== p.id));
+                                 }}
+                                 className="w-4 h-4 rounded border-white/20 bg-white/10 text-pink-500 focus:ring-0"
+                               />
+                               <div className="flex-1">
+                                  <p className="text-sm font-bold text-gray-300 group-hover:text-white transition-colors">{p.name}</p>
+                                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">₹{p.price} • {merchants.find(m => m.id === p.merchantId)?.name}</p>
+                               </div>
+                            </label>
+                         ))}
+                      </div>
+                   </div>
+
+                   <button 
+                     onClick={handleAddCategory} 
+                     disabled={isSavingCat}
+                     className={`w-full bg-gradient-to-r from-pink-500 to-rose-600 text-white font-extrabold py-4 rounded-xl active:scale-95 transition-transform mt-6 shadow-lg shadow-pink-500/20 flex items-center justify-center ${isSavingCat ? 'opacity-50 cursor-not-allowed' : ''}`}
+                   >
+                      {isSavingCat ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                          SAVING TO DB...
+                        </>
+                      ) : 'Create Section'}
                    </button>
                  </div>
                </motion.div>

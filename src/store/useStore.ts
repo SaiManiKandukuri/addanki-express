@@ -6,6 +6,16 @@ export interface Banner {
   photoUrl: string;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  photoUrl: string;
+  displayOrder: number;
+  productIds: string[];
+  type: 'section' | 'category';
+  merchantId?: string;
+}
+
 export interface CustomerProfile {
   id?: string;
   name: string;
@@ -41,7 +51,7 @@ export interface Product {
   name: string;
   price: number;
   mrp?: number;
-  category: 'Milk' | 'Meat' | 'Veggies' | 'Kirana' | 'Snacks';
+  category: string;
   inStock: boolean;
   photoUrl?: string;
   description?: string;
@@ -90,7 +100,12 @@ interface AppState {
   agents: Agent[];
   products: Product[];
   banners: Banner[];
+  categories: Category[];
   
+  addCategory: (category: Category) => void;
+  updateCategory: (id: string, updates: Partial<Category>) => void;
+  removeCategory: (id: string) => void;
+
   addBanner: (banner: Banner) => void;
   removeBanner: (id: string) => void;
 
@@ -133,7 +148,7 @@ export const useAppStore = create<AppState>()(
           return;
         }
 
-        const [merchants, agents, products, orders, banners, profile, allCustomers] = await Promise.all([
+        const [merchants, agents, products, orders, banners, profile, allCustomers, categories] = await Promise.all([
           db.fetchMerchants(),
           db.fetchAgents(),
           db.fetchProducts(),
@@ -141,14 +156,16 @@ export const useAppStore = create<AppState>()(
           db.fetchBanners(),
           db.fetchCustomerProfile('c1'),
           db.fetchAllCustomerProfiles(),
+          db.fetchCategories(),
         ]);
-        console.log('✅ Hydration complete:', { merchants: merchants.length, agents: agents.length, products: products.length, orders: orders.length, banners: banners.length });
+        console.log('✅ Hydration complete:', { merchants: merchants.length, agents: agents.length, products: products.length, orders: orders.length, banners: banners.length, categories: categories.length });
         set({
           merchants,
           agents,
           products,
           orders,
           banners,
+          categories: categories.sort((a, b) => a.displayOrder - b.displayOrder),
           allCustomers,
           customerProfile: profile || {
             name: 'Guest',
@@ -191,11 +208,24 @@ export const useAppStore = create<AppState>()(
     toggleCustomerBlock: (id) => {
       const customer = get().allCustomers.find(c => c.id === id);
       if (!customer) return;
-      const newBlocked = !customer.isBlocked;
-      set((state) => ({
-        allCustomers: state.allCustomers.map(c => c.id === id ? { ...c, isBlocked: newBlocked } : c)
-      }));
-      db.updateCustomerBlock(id, newBlocked).catch(console.error);
+      const isBlocked = !customer.isBlocked;
+      set(s => ({ allCustomers: s.allCustomers.map(c => c.id === id ? { ...c, isBlocked } : c) }));
+      db.updateCustomerBlock(id, isBlocked).catch(console.error);
+    },
+
+    // ---- Categories ----
+    categories: [],
+    addCategory: (cat) => {
+      set(s => ({ categories: [...s.categories, cat].sort((a, b) => a.displayOrder - b.displayOrder) }));
+      db.upsertCategory(cat).catch(console.error);
+    },
+    updateCategory: (id, updates) => {
+      set(s => ({ categories: s.categories.map(c => c.id === id ? { ...c, ...updates } : c).sort((a, b) => a.displayOrder - b.displayOrder) }));
+      db.updateCategoryFields(id, updates).catch(console.error);
+    },
+    removeCategory: (id) => {
+      set(s => ({ categories: s.categories.filter(c => c.id !== id) }));
+      db.deleteCategory(id).catch(console.error);
     },
 
     // ---- Merchants ----

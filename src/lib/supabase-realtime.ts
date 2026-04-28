@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { useAppStore } from '@/store/useStore';
-import type { Merchant, Agent, Product, Order, Banner } from '@/store/useStore';
+import type { Merchant, Agent, Product, Order, Banner, Category } from '@/store/useStore';
 
 // ============================================
 // Row → App type mappers (snake_case → camelCase)
@@ -62,6 +62,18 @@ function rowToBanner(row: Record<string, any>): Banner {
   return {
     id: row.id,
     photoUrl: row.photo_url,
+  };
+}
+
+function rowToCategory(row: Record<string, any>): Category {
+  return {
+    id: row.id,
+    name: row.name,
+    photoUrl: row.photo_url ?? "",
+    displayOrder: row.display_order ?? 0,
+    productIds: row.product_ids ?? [],
+    type: row.type ?? 'section',
+    merchantId: row.merchant_id ?? undefined,
   };
 }
 
@@ -217,6 +229,33 @@ export function subscribeToRealtimeChanges(): () => void {
       console.log('📡 Banners channel:', status);
     });
   channels.push(bannersChannel);
+
+  // --- Categories Channel ---
+  const categoriesChannel = supabase
+    .channel('realtime-categories')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'categories' },
+      (payload: any) => {
+        console.log('🔄 RT categories:', payload.eventType, payload);
+        const current = useAppStore.getState().categories;
+
+        if (payload.eventType === 'INSERT') {
+          const item = rowToCategory(payload.new);
+          if (!current.find(c => c.id === item.id)) {
+            useAppStore.setState({ categories: [...current, item].sort((a,b) => a.displayOrder - b.displayOrder) });
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          const item = rowToCategory(payload.new);
+          useAppStore.setState({ categories: current.map(c => c.id === item.id ? item : c).sort((a,b) => a.displayOrder - b.displayOrder) });
+        } else if (payload.eventType === 'DELETE') {
+          const oldId = payload.old?.id;
+          if (oldId) useAppStore.setState({ categories: current.filter(c => c.id !== oldId) });
+        }
+      }
+    )
+    .subscribe();
+  channels.push(categoriesChannel);
 
   // Return cleanup function
   return () => {

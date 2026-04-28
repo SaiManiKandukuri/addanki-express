@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Merchant, Agent, Product, Order, Banner, CustomerProfile, CartItem } from '@/store/useStore';
+import type { Merchant, Agent, Product, Order, Banner, CustomerProfile, CartItem, Category } from '@/store/useStore';
 
 // ============================================
 // Connection Test
@@ -327,4 +327,61 @@ export async function updateCustomerBlock(id: string, isBlocked: boolean): Promi
   const { data, error } = await supabase.from('customer_profiles').update({ is_blocked: isBlocked }).eq('id', id).select();
   if (error) { logDbError('UPDATE', 'customer_profiles', error); throw error; }
   logDbSuccess('UPDATE', 'customer_profiles', data);
+}
+
+// ============================================
+// Categories
+// ============================================
+
+export async function fetchCategories(): Promise<any[]> {
+  logDbOp('SELECT', 'categories');
+  const { data, error } = await supabase.from('categories').select('*').order('display_order', { ascending: true });
+  if (error) { logDbError('SELECT', 'categories', error); return []; }
+  logDbSuccess('SELECT', 'categories', `${data?.length} rows`);
+  return (data || []).map(row => ({
+    id: row.id,
+    name: row.name,
+    photoUrl: row.photo_url,
+    displayOrder: row.display_order,
+    productIds: row.product_ids || [],
+    type: row.type || 'section',
+    merchantId: row.merchant_id,
+  }));
+}
+
+export async function upsertCategory(category: Category): Promise<void> {
+  const payload = {
+    id: category.id,
+    name: category.name,
+    photo_url: category.photoUrl,
+    display_order: category.displayOrder,
+    product_ids: category.productIds,
+    type: category.type,
+    merchant_id: category.merchantId,
+  };
+  logDbOp('UPSERT', 'categories', payload);
+  const { data, error } = await supabase.from('categories').upsert(payload).select();
+  if (error) { logDbError('UPSERT', 'categories', error); throw error; }
+  logDbSuccess('UPSERT', 'categories', data);
+}
+
+export async function updateCategoryFields(id: string, updates: Partial<any>): Promise<void> {
+  const mapped: Record<string, unknown> = {};
+  if (updates.name !== undefined) mapped.name = updates.name;
+  if (updates.photoUrl !== undefined) mapped.photo_url = updates.photoUrl;
+  if (updates.displayOrder !== undefined) mapped.display_order = updates.displayOrder;
+  if (updates.productIds !== undefined) mapped.product_ids = updates.productIds;
+  if (updates.type !== undefined) mapped.type = updates.type;
+  if (updates.merchantId !== undefined) mapped.merchant_id = updates.merchantId;
+  logDbOp('UPDATE', 'categories', { id, mapped });
+  const { data, error } = await supabase.from('categories').update(mapped).eq('id', id).select();
+  if (error) { logDbError('UPDATE', 'categories', error); throw error; }
+  logDbSuccess('UPDATE', 'categories', data);
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  logDbOp('DELETE', 'categories', { id });
+  const { error } = await supabase.from('categories').delete().eq('id', id);
+  if (error) { logDbError('DELETE', 'categories', error); throw error; }
+  logDbSuccess('DELETE', 'categories', { id });
 }
