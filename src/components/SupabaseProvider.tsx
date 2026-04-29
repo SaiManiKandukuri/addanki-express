@@ -22,73 +22,64 @@ export default function SupabaseProvider({ children }: { children: React.ReactNo
   useEffect(() => {
     if (!isHydrated) return;
 
-    // Try realtime (may fail on some Supabase plans/configs)
+    // Try realtime (primary sync)
     let unsubscribeRealtime: (() => void) | null = null;
     try {
       unsubscribeRealtime = subscribeToRealtimeChanges();
     } catch (e) {
-      console.warn('⚠️ Realtime subscription failed, using polling only:', e);
+      console.warn('⚠️ Realtime subscription failed:', e);
     }
 
-    // Polling fallback — re-fetches all data every 3 seconds
-    // This guarantees cross-device sync even if realtime WebSocket fails
-    const poll = async () => {
+    // Lightweight Polling (Fallback for critical data only)
+    // We only poll Orders frequently. Everything else is handled by Realtime.
+    const pollCritical = async () => {
       try {
-        const [merchants, agents, products, orders, banners, profile, allCustomers, categories] = await Promise.all([
-          db.fetchMerchants(),
-          db.fetchAgents(),
-          db.fetchProducts(),
+        const [orders, profile] = await Promise.all([
           db.fetchOrders(),
-          db.fetchBanners(),
           db.fetchCustomerProfile('c1'),
-          db.fetchAllCustomerProfiles(),
-          db.fetchCategories(),
         ]);
 
-        // Only update if data actually changed (avoid unnecessary re-renders)
         const state = useAppStore.getState();
-        
         const changed: Partial<Record<string, any>> = {};
         
-        if (JSON.stringify(state.merchants) !== JSON.stringify(merchants)) {
-          changed.merchants = merchants;
+        // Simple length/ID check is much faster than JSON.stringify
+        if (state.orders.length !== orders.length || (orders.length > 0 && state.orders[0]?.id !== orders[0]?.id)) {
+           changed.orders = orders;
         }
-        if (JSON.stringify(state.agents) !== JSON.stringify(agents)) {
-          changed.agents = agents;
-        }
-        if (JSON.stringify(state.products) !== JSON.stringify(products)) {
-          changed.products = products;
-        }
-        if (JSON.stringify(state.orders) !== JSON.stringify(orders)) {
-          changed.orders = orders;
-        }
-        if (JSON.stringify(state.banners) !== JSON.stringify(banners)) {
-          changed.banners = banners;
-        }
-        if (profile && JSON.stringify(state.customerProfile) !== JSON.stringify(profile)) {
-          changed.customerProfile = profile;
-        }
-        if (JSON.stringify(state.allCustomers) !== JSON.stringify(allCustomers)) {
-          changed.allCustomers = allCustomers;
-        }
-        if (JSON.stringify(state.categories) !== JSON.stringify(categories)) {
-          changed.categories = categories.sort((a,b) => a.displayOrder - b.displayOrder);
+        
+        if (profile && state.customerProfile?.name !== profile.name) {
+           changed.customerProfile = profile;
         }
 
         if (Object.keys(changed).length > 0) {
-          console.log('🔄 Poll: data changed, updating:', Object.keys(changed).join(', '));
           useAppStore.setState(changed);
         }
-      } catch (err) {
-        // Silent fail on poll errors — will retry next interval
-      }
+      } catch (err) { /* silent fail */ }
     };
 
-    pollRef.current = setInterval(poll, POLL_INTERVAL);
+    // Deep Sync (Run once every 60 seconds as a safety net)
+    const deepSync = async () => {
+       try {
+          const [merchants, agents, products, categories] = await Promise.all([
+             db.fetchMerchants(),
+             db.fetchAgents(),
+             db.fetchProducts(),
+             db.fetchCategories(),
+          ]);
+          useAppStore.setState({ 
+             merchants, agents, products, 
+             categories: categories.sort((a,b) => a.displayOrder - b.displayOrder) 
+          });
+       } catch (e) {}
+    };
+
+    pollRef.current = setInterval(pollCritical, 10000); // 10 seconds for orders
+    const deepSyncInterval = setInterval(deepSync, 60000); // 1 minute for everything else
 
     return () => {
       if (unsubscribeRealtime) unsubscribeRealtime();
       if (pollRef.current) clearInterval(pollRef.current);
+      clearInterval(deepSyncInterval);
     };
   }, [isHydrated]);
 

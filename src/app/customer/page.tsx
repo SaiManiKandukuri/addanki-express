@@ -44,16 +44,32 @@ export default function CustomerHome() {
   let matchedProducts: Product[] = [];
 
   if (selectedCategory) {
-     const cat = categories.find(c => c.name === selectedCategory);
-     if (cat) {
-        matchedProducts = products.filter(p => cat.productIds.includes(p.id));
-     } else {
-        matchedProducts = products.filter(p => p.category.toLowerCase() === selectedCategory.toLowerCase());
-     }
+     const cat = categories.find(c => c.name.toLowerCase() === selectedCategory.toLowerCase());
+     const lowerCat = selectedCategory.toLowerCase().replace(/s$/, ''); // singular for matching
+     
+     matchedProducts = products.filter(p => {
+        const prodCat = (p.category || "").toLowerCase();
+        const matchesString = prodCat === lowerCat || prodCat === selectedCategory.toLowerCase();
+        const matchesAdmin = cat ? cat.productIds.includes(p.id) : false;
+        return matchesString || matchesAdmin;
+     });
+     
+     // Only show merchants who have these products
+     const merchantIdsWithProducts = new Set(matchedProducts.map(p => p.merchantId));
+     matchedMerchants = merchants.filter(m => merchantIdsWithProducts.has(m.id));
   } else if (normalizedQuery.length > 0) {
      matchedMerchants = merchants.filter(m => m.name.toLowerCase().includes(normalizedQuery));
      matchedProducts = products.filter(p => p.name.toLowerCase().includes(normalizedQuery));
   }
+
+  const [flyingItem, setFlyingItem] = useState<{ x: number, y: number } | null>(null);
+
+  const handleAddToCart = (e: React.MouseEvent, product: Product) => {
+     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+     setFlyingItem({ x: rect.left, y: rect.top });
+     addToCart(product);
+     setTimeout(() => setFlyingItem(null), 800);
+  };
 
   if (!mounted) return <div className="min-h-screen bg-[var(--color-softcream)] animate-pulse" />;
 
@@ -196,60 +212,42 @@ export default function CustomerHome() {
                          {t("See All", "అన్నీ")} <ChevronRight size={14} className="ml-0.5"/>
                       </button>
                     </div>
-                    <div className="flex overflow-x-auto space-x-4 pb-4 hide-scrollbar snap-x">
-                      {sectionProducts.map((product) => {
-                         const merchant = merchants.find(m => m.id === product.merchantId);
-                         return (
-                          <div key={product.id} className="w-56 shrink-0 bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden snap-start group relative">
-                            <div className="h-40 bg-gray-50 relative m-2 rounded-[1.8rem] overflow-hidden">
-                              {product.photoUrl ? (
-                                <img src={product.photoUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-200"><Box size={32} /></div>
-                              )}
-                              
-                              {/* Popular Tag */}
-                              <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-green-700 text-[9px] font-black px-2 py-1 rounded-full flex items-center shadow-sm">
-                                <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5 animate-pulse"></span>
-                                POPULAR
-                              </div>
-
-                              {/* Add Button Overlay */}
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); addToCart(product); }}
-                                className="absolute bottom-3 right-3 w-10 h-10 bg-white text-pink-500 rounded-2xl flex items-center justify-center hover:bg-pink-500 hover:text-white transition-all shadow-lg active:scale-90"
-                              >
-                                <Plus size={20} strokeWidth={3} />
-                              </button>
-                            </div>
-                            
-                            <div className="px-5 pb-5 pt-2">
-                              <div className="flex items-center space-x-1 mb-1">
-                                 <div className="w-3 h-3 border border-green-600 flex items-center justify-center p-0.5">
-                                    <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
+                    <div className="bg-white rounded-3xl p-4 border border-gray-100 shadow-sm">
+                       <div className="flex overflow-x-auto space-x-4 pb-2 hide-scrollbar snap-x">
+                         {sectionProducts.map((product) => {
+                            const merchant = merchants.find(m => m.id === product.merchantId);
+                            return (
+                             <div key={product.id} className="w-40 shrink-0 bg-gray-50/50 rounded-2xl border border-gray-100/50 overflow-hidden snap-start group relative">
+                               <div className="h-28 bg-white relative m-1.5 rounded-xl overflow-hidden shadow-sm">
+                                 {product.photoUrl ? (
+                                   <img src={product.photoUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                                 ) : (
+                                   <div className="w-full h-full flex items-center justify-center text-gray-100"><Box size={24} /></div>
+                                 )}
+                                 
+                                 {/* Minimal Add Button */}
+                                 <button 
+                                   onClick={(e) => handleAddToCart(e, product)}
+                                   className="absolute bottom-2 right-2 w-8 h-8 bg-pink-500 text-white rounded-xl flex items-center justify-center hover:bg-pink-600 transition-all shadow-lg active:scale-90 z-10"
+                                 >
+                                   <Plus size={18} strokeWidth={3} />
+                                 </button>
+                               </div>
+                               
+                               <div className="px-3 pb-4 pt-1">
+                                 <h3 className="font-bold text-[11px] text-gray-900 line-clamp-1 mb-0.5">{product.name}</h3>
+                                 
+                                 <div className="flex items-center justify-between mt-1">
+                                    <span className="font-black text-xs text-pink-500">₹{product.price}</span>
+                                    <div className="flex items-center bg-white px-1 py-0.5 rounded-lg text-[7px] font-bold text-gray-500 border border-gray-100">
+                                      <Star size={7} className="fill-[#FFD700] text-[#FFD700] mr-0.5" /> {merchant?.rating || '4.0'}
+                                    </div>
                                  </div>
-                                 <h3 className="font-bold text-sm text-gray-900 line-clamp-1">{product.name}</h3>
-                              </div>
-                              
-                              <p className="text-[10px] font-medium text-gray-400">by {merchant?.name || 'Unknown'}</p>
-                              
-                              <div className="flex items-center space-x-3 mt-2">
-                                <div className="flex items-center bg-green-50 px-1.5 py-0.5 rounded text-[10px] font-bold text-green-700">
-                                  <Star size={10} className="fill-green-700 mr-0.5" /> {merchant?.rating || '4.0'}
-                                </div>
-                                <span className="text-[10px] font-bold text-gray-400">{merchant?.deliveryTime || '30-40'} mins</span>
-                              </div>
-                              
-                              <div className="mt-2">
-                                <span className="font-black text-sm text-gray-900">₹{product.price}</span>
-                                {product.mrp && product.mrp > product.price && (
-                                  <span className="text-[10px] text-gray-400 line-through ml-2">₹{product.mrp}</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                               </div>
+                             </div>
+                           );
+                         })}
+                       </div>
                     </div>
                   </div>
                 );
@@ -314,7 +312,10 @@ export default function CustomerHome() {
                      </div>
                   )}
                   {(isSearching ? matchedMerchants : merchants).map(merchant => {
-                    const merchantProducts = products.filter(p => p.merchantId === merchant.id).slice(0, 3);
+                    const merchantProducts = (selectedCategory 
+                       ? matchedProducts.filter(p => p.merchantId === merchant.id)
+                       : products.filter(p => p.merchantId === merchant.id)
+                    ).slice(0, 3);
                     return (
                     <div key={merchant.id}>
                       {merchant.isOffline ? (
@@ -539,6 +540,21 @@ export default function CustomerHome() {
                   <button onClick={() => setShowSupport(false)} className="w-full mt-4 text-gray-400 font-bold py-2 text-sm">{t("Close", "మూసివేయండి")}</button>
                </motion.div>
             </div>
+         )}
+       </AnimatePresence>
+       <AnimatePresence>
+         {flyingItem && (
+           <motion.div
+             initial={{ x: flyingItem.x, y: flyingItem.y, scale: 1, opacity: 1 }}
+             animate={{ 
+               x: 200, 
+               y: 800, 
+               scale: 0.2, 
+               opacity: 0 
+             }}
+             transition={{ duration: 0.6, ease: "circIn" }}
+             className="fixed z-[100] w-10 h-10 bg-pink-500 rounded-full blur-md shadow-[0_0_20px_#ec4899] pointer-events-none"
+           />
          )}
        </AnimatePresence>
     </div>
